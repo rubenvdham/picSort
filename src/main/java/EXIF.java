@@ -5,6 +5,7 @@ import com.drew.metadata.Metadata;
 import com.drew.metadata.Tag;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
+import jdk.vm.ci.meta.Local;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +30,7 @@ protected static void printMetadata(File file){
 }
 
 
-   private static String getModel(Metadata metadata){
+   protected static String getModel(Metadata metadata){
 
         ExifIFD0Directory idf = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
         return idf.getDescription(272);
@@ -40,7 +41,7 @@ protected static void printMetadata(File file){
        ExifSubIFDDirectory sub =  metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
        return sub.getDateOriginal();
     }
-    private static Date getCreationDate2(Metadata metadata){
+    private static Date getDigitizedDate(Metadata metadata){
 
 
         ExifSubIFDDirectory sub =  metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
@@ -49,12 +50,39 @@ protected static void printMetadata(File file){
 
 
 
+
+    protected static LocalDateTime getDate(Metadata metadata){
+        Date creationDate = getCreationDate(metadata);
+        if (creationDate == null){
+            creationDate = getDigitizedDate(metadata);
+            if (creationDate == null){
+                return null;
+            }
+        }
+        LocalDateTime creationDateTime = LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
+        return creationDateTime;
+    }
+
+    protected static LocalDateTime getDate(File file) throws IOException,ImageProcessingException{
+        Metadata metadata = ImageMetadataReader.readMetadata(file);
+        return getDate(metadata);
+    }
+
+    protected static String getModel(File file)throws IOException,ImageProcessingException{
+        Metadata metadata = ImageMetadataReader.readMetadata(file);
+        return getModel(metadata);
+    }
+
+
+
+
+
     public static void printEssentials(File file){
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(file);
             System.out.println("-------------------");
             System.out.println(getCreationDate(metadata));
-            System.out.println(getCreationDate2(metadata));
+            System.out.println(getDigitizedDate(metadata));
 
             LocalDateTime date =  LocalDateTime.ofInstant(getCreationDate(metadata).toInstant(), ZoneId.systemDefault());
             System.out.println(date);
