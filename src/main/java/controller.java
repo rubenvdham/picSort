@@ -34,10 +34,16 @@ public class controller {
         modelDict = new File(workingDir.getAbsolutePath()+"/"+MODEL_DICT_NAME);
     }
 
-
     private static final boolean CAMERA_MODEL_REQUIRED = true;
-    private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMdd-HHmmSS");
+    private static final boolean verbose = true;
+    private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMdd-HHmmss");
     private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM");
+
+
+
+
+
+
 
     public static void main(String args[]){
 
@@ -48,15 +54,20 @@ public class controller {
         }
 
 
-        out.print("Camera Model dictionary loaded: ");
+        out.print("Camera Model dictionary: ");
         modelMap = parseModelMap();
-        if (modelMap == null){
-            out.println("NO");
-        }else {
-            out.println("YES");
+
+
+        if (modelMap != null){
+            out.println("LOADED");
+            printModelMap();
+            if (modelMap.size() == 0){
+                modelMap = null;
+            }
         }
 
-        out.print("Processing directories:");
+
+        out.println("Processing directories:");
         processDirectory(inputDir);
         out.println("\n\nDONE");
     }
@@ -67,25 +78,37 @@ public class controller {
         Map<String,String> result = new HashMap<String, String>();
         Scanner inputReader;
         try{
-             inputReader = new Scanner(modelDict);
+            inputReader = new Scanner(modelDict);
         }catch (FileNotFoundException e){
+            out.println("FILE NOT FOUND");
             return null;
         }
         inputReader.useDelimiter(":");
         try {
+            String[] line;
             while (inputReader.hasNextLine()) {
-                result.put(inputReader.next(), inputReader.next());
+                line = inputReader.nextLine().split(":",2);
+                result.put(line[0],line[1]);
             }
         }catch (Exception e){
             System.err.println("WARNING: Couldn't parse dictionary completely");
+            //e.printStackTrace();
         }
+
         return result;
+    }
+
+    private static void printModelMap(){
+        for (String key: modelMap.keySet()){
+            out.printf("'%s' --> '%s'\n",key,modelMap.get(key));
+        }
+        out.println("--------------------------------------------");
     }
 
     private static void processDirectory(File dir){
         File[] children = dir.listFiles();
-        tabs+="\t";
         out.println(tabs+dir.getName());
+        tabs+="\t";
         for(File child: children){
             if (child.isDirectory()){
                 processDirectory(child);
@@ -97,20 +120,32 @@ public class controller {
     }
 
     private static void processFile(File file){
-        //EXIF.printEssentials(file);
-        //grab info
         String model = null;
         LocalDateTime date = null;
+        String extension = getExtension(file.getName());
         try {
-            model = EXIF.getModel(file);
-            date = EXIF.getDate(file);
+            switch (extension){
+                case ".mp4":
+                    date = EXIF.getMp4VideoDate(file,false);
+                    model = "";
+                    break;
+                case ".mov":
+                    date = EXIF.getMovVideoDate(file,false);
+                    model = "";
+                    break;
+                default:
+                    date = EXIF.getImageDate(file);
+                    model = EXIF.getImageModel(file);
+                    break;
+            }
         }catch(Exception e){
-            System.err.printf("ERROR parsing: %s",file.getAbsolutePath());
+            System.err.printf("ERROR parsing: %s\n",file.getAbsolutePath());
             e.printStackTrace();
             return;
         }
-        String extension = getExtension(file.getName());
+
         if (date==null|| extension==null    ||   CAMERA_MODEL_REQUIRED && model == null){
+            if (verbose) out.println(tabs+"Skipping:"+ file.getName());
             return;
         }
 
@@ -122,6 +157,11 @@ public class controller {
         //path
         newFileName.append(workingDir.getAbsolutePath());
         newFileName.append("/"+date.format(DIR_NAME_FORMATTER)+"/");
+
+        File dir = new File(newFileName.toString());
+        if (!dir.exists()){
+            dir.mkdir();
+        }
 
         //filename
         newFileName.append(date.format(FILE_NAME_FORMATTER));
@@ -135,14 +175,19 @@ public class controller {
             System.err.println("ERROR: FILE ALREADY EXISTS:"+newFileName.toString());
             return;
         }
-        file.renameTo(dest);
+
+        //out.print(tabs+file.getName() +"->>"+ dest.getAbsolutePath()+"     ");
+
+
+        boolean result = file.renameTo(dest);
+        //out.println(result);
     }
 
     private static String rewriteModelName(String model) {
         if (model == null) {
             return "Unknown";
         }
-        if (modelMap.containsKey(model)) {
+        if (modelMap !=null && modelMap.containsKey(model)) {
             return modelMap.get(model);
         } else {
             return model;
@@ -158,7 +203,7 @@ public class controller {
         Matcher m = r.matcher(filename);
 
         if (m.find()) {
-            return m.group(0);
+            return m.group(1).toLowerCase();
         } else {
             System.err.println("ERROR: Couldn't get file extension of: "+filename);
             return null;
