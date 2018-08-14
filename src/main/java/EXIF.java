@@ -8,6 +8,8 @@ import com.drew.metadata.Tag;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.drew.metadata.file.FileSystemDirectory;
+import com.drew.metadata.mov.media.QuickTimeVideoDirectory;
+import com.drew.metadata.mov.metadata.QuickTimeMetadataDirectory;
 import com.drew.metadata.mp4.Mp4Dictionary;
 import com.drew.metadata.mp4.Mp4Directory;
 import com.drew.metadata.mp4.media.Mp4TextDirectory;
@@ -52,12 +54,11 @@ protected static void printMetadata(File file){
 
     protected static LocalDateTime getImageDate(Metadata metadata){
         Date creationDate = getImageCreationDate(metadata);
-        if (creationDate == null){
-            creationDate = getImageDigitizedDate(metadata);
-            if (creationDate == null){
-                return null;
-            }
-        }
+        if (creationDate == null) creationDate = getImageDigitizedDate(metadata);
+        if (creationDate == null) creationDate = getImageIFD0ModifyDate(metadata);
+        if (creationDate == null) return null;
+
+
         LocalDateTime creationDateTime = LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
         return creationDateTime;
     }
@@ -83,6 +84,11 @@ protected static void printMetadata(File file){
     }
 
 
+    private static Date getImageIFD0ModifyDate(Metadata metadata){
+        ExifIFD0Directory ifd=  metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+        return ifd.getDate(306);
+    }
+
 
 
 
@@ -97,13 +103,27 @@ protected static void printMetadata(File file){
 
     protected static LocalDateTime getMovVideoDate(File file, boolean modifiedFallback)throws IOException,ImageProcessingException{
         Metadata metadata = QuickTimeMetadataReader.readMetadata(file);
-        metadata.getDirectories().forEach(p->{
-            p.getTags().stream().forEach(tag -> {
-                System.out.println(tag.toString());
-            });
-        });
-        return null;
+
+        QuickTimeVideoDirectory vidDir = metadata.getFirstDirectoryOfType(QuickTimeVideoDirectory.class);
+        FileSystemDirectory fsDir = metadata.getFirstDirectoryOfType(FileSystemDirectory.class);
+        Date creationDate = vidDir.getDate(256);//creation time
+        if (creationDate == null) creationDate = vidDir.getDate(257); //try modification time
+        if (creationDate == null && modifiedFallback) creationDate = fsDir.getDate(3); //try filesystem modified date
+        if (creationDate == null) return null;
+        return LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
     }
+
+    protected static String getMovVideoModel(File file) throws IOException,ImageProcessingException{
+        Metadata metadata = QuickTimeMetadataReader.readMetadata(file);
+        QuickTimeMetadataDirectory mdDir= metadata.getFirstDirectoryOfType(QuickTimeMetadataDirectory.class);
+        return mdDir.getString(1310); //Get model (iphones mostly)
+            /*mdDir.getTags().stream().forEach(tag -> {
+                System.out.println(tag.getTagType()+ "  "+ tag.getDescription());
+        });
+        return null;*/
+    }
+
+
 
     protected static LocalDateTime getMp4VideoDate(File file, boolean modifiedFallback)throws IOException,ImageProcessingException{
         Metadata metadata = Mp4MetadataReader.readMetadata(file);
@@ -112,7 +132,7 @@ protected static void printMetadata(File file){
         Date creationDate = mp4Dir.getDate(256);//creation time
         if (creationDate == null) creationDate = mp4Dir.getDate(257); //try modification time
         if (creationDate == null && modifiedFallback) creationDate = fsDir.getDate(3); //try filesystem modified date
-
+        if (creationDate == null) return null;
         return LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
     }
 
@@ -176,4 +196,6 @@ protected static void printMetadata(File file){
             }
         }
 }
+
+
 }

@@ -1,9 +1,3 @@
-import com.drew.imaging.ImageMetadataReader;
-import com.drew.imaging.ImageProcessingException;
-import com.drew.metadata.Directory;
-import com.drew.metadata.Metadata;
-import com.drew.metadata.Tag;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -20,6 +14,10 @@ public class controller {
     private static final String INPUT_FOLDER = "input";
     private static final String MODEL_DICT_NAME = "camera-dictionary.txt";
 
+    private static final boolean CAMERA_MODEL_REQUIRED = true;
+    private static final boolean MP4_FILE_DATE_FALLBACK = false;
+    private static final boolean MOV_FILE_DATE_FALLBACK = true;
+
 
     private static final File workingDir;
     private static final File inputDir;
@@ -34,7 +32,9 @@ public class controller {
         modelDict = new File(workingDir.getAbsolutePath()+"/"+MODEL_DICT_NAME);
     }
 
-    private static final boolean CAMERA_MODEL_REQUIRED = true;
+
+
+
     private static final boolean verbose = true;
     private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMdd-HHmmss");
     private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM");
@@ -116,7 +116,9 @@ public class controller {
                 processFile(child);
             }
         }
+        //all children have been processed, so one tab less and if no children exist, remove the dir.
         tabs = tabs.substring(0,tabs.length()-1);
+        if (dir.listFiles().length == 0) dir.deleteOnExit();
     }
 
     private static void processFile(File file){
@@ -126,12 +128,12 @@ public class controller {
         try {
             switch (extension){
                 case ".mp4":
-                    date = EXIF.getMp4VideoDate(file,false);
+                    date = EXIF.getMp4VideoDate(file,MP4_FILE_DATE_FALLBACK);
                     model = "";
                     break;
                 case ".mov":
-                    date = EXIF.getMovVideoDate(file,false);
-                    model = "";
+                    date = EXIF.getMovVideoDate(file,MOV_FILE_DATE_FALLBACK);
+                    model = EXIF.getMovVideoModel(file);
                     break;
                 default:
                     date = EXIF.getImageDate(file);
@@ -145,7 +147,7 @@ public class controller {
         }
 
         if (date==null|| extension==null    ||   CAMERA_MODEL_REQUIRED && model == null){
-            if (verbose) out.println(tabs+"Skipping:"+ file.getName());
+            if (verbose) out.println(tabs+"Skipping:"+ file.getName() + "   date: "+date+"   model:"+model);
             return;
         }
 
@@ -180,7 +182,6 @@ public class controller {
 
 
         boolean result = file.renameTo(dest);
-        //out.println(result);
     }
 
     private static String rewriteModelName(String model) {
