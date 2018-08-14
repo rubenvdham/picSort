@@ -1,3 +1,5 @@
+import com.drew.imaging.ImageProcessingException;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -140,6 +142,9 @@ public class controller {
                     model = EXIF.getImageModel(file);
                     break;
             }
+        }catch (ImageProcessingException e) {
+            System.err.printf("Not parsable: %s\n",file.getAbsolutePath());
+            return;
         }catch(Exception e){
             System.err.printf("ERROR parsing: %s\n",file.getAbsolutePath());
             e.printStackTrace();
@@ -173,6 +178,8 @@ public class controller {
 
 
         File dest = new File(newFileName.toString());
+
+        //TODO:Make duplicates folder or append something to alter filename?
         if (dest.exists()){
             System.err.println("ERROR: FILE ALREADY EXISTS:"+newFileName.toString());
             return;

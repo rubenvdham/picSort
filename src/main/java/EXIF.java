@@ -40,9 +40,12 @@ protected static void printMetadata(File file){
         return getImageModel(metadata);
     }
 
-   protected static String getImageModel(Metadata metadata){
+   protected static String getImageModel(Metadata metadata) throws ImageProcessingException{
 
         ExifIFD0Directory idf = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+        try{
+            if (idf.getDescription(272) == null) return null;
+        }catch (NullPointerException e){return null;}
         return idf.getDescription(272);
     }
 
@@ -53,38 +56,40 @@ protected static void printMetadata(File file){
     }
 
     protected static LocalDateTime getImageDate(Metadata metadata){
-        Date creationDate = getImageCreationDate(metadata);
-        if (creationDate == null) creationDate = getImageDigitizedDate(metadata);
-        if (creationDate == null) creationDate = getImageIFD0ModifyDate(metadata);
+        Date creationDate = null;
+        try{
+            creationDate = getImageCreationDate(metadata);
+        }catch (NullPointerException e){
+
+        }
+        if (creationDate == null) { try { creationDate = getImageDigitizedDate(metadata);}catch (NullPointerException e){}}
+        if (creationDate == null) { try { creationDate = getImageIFD0ModifyDate(metadata);}catch (NullPointerException e){}}
         if (creationDate == null) return null;
 
 
         LocalDateTime creationDateTime = LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
         return creationDateTime;
+
     }
 
 
 
     /*IMAGE PRIVATE CLASSES*/
 
-    private static Date getImageCreationDate(Metadata metadata){
-
-
+    private static Date getImageCreationDate(Metadata metadata) throws NullPointerException{
         ExifSubIFDDirectory sub =  metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
         return sub.getDateOriginal();
     }
 
 
 
-    private static Date getImageDigitizedDate(Metadata metadata){
-
-
+    private static Date getImageDigitizedDate(Metadata metadata) throws NullPointerException{
         ExifSubIFDDirectory sub =  metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
         return  sub.getDateDigitized();
     }
 
 
-    private static Date getImageIFD0ModifyDate(Metadata metadata){
+    private static Date getImageIFD0ModifyDate(Metadata metadata) throws NullPointerException{
         ExifIFD0Directory ifd=  metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
         return ifd.getDate(306);
     }
