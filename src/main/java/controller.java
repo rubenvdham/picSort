@@ -142,10 +142,11 @@ public class controller {
                     model = EXIF.getImageModel(file);
                     break;
             }
-        }catch (ImageProcessingException e) {
+        }catch (ImageProcessingException | IOException e2) {
             System.err.printf("Not parsable: %s\n",file.getAbsolutePath());
             return;
-        }catch(Exception e){
+        }catch
+        (Exception e){
             System.err.printf("ERROR parsing: %s\n",file.getAbsolutePath());
             e.printStackTrace();
             return;
