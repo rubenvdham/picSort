@@ -1,4 +1,6 @@
 import com.drew.imaging.ImageProcessingException;
+import org.apache.commons.cli.*;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -17,7 +19,7 @@ public class controller {
     private static final boolean CAMERA_MODEL_REQUIRED = true;
     private static final boolean MP4_FILE_DATE_FALLBACK = false;
     private static final boolean MOV_FILE_DATE_FALLBACK = true;
-    private static final boolean VERBOSE = true;
+    private static boolean verbose = false;
 
     private static final File workingDir;
     private static final File inputDir;
@@ -42,6 +44,7 @@ public class controller {
 
 
     public static void main(String args[]){
+        parseArgs(args);
 
         if (!inputDir.exists() || inputDir.isFile()){
             System.err.println("ERROR: Directory '"+INPUT_FOLDER+"' not found");
@@ -64,6 +67,26 @@ public class controller {
         out.println("\n\nDONE");
     }
 
+    private static void parseArgs(String[] args) {
+        Options options = new Options();
+        Option verbosity = new Option("v","verbose",false,"Toggle verbosity; Default: Off");
+        verbosity.setRequired(false);
+        options.addOption(verbosity);
+
+        CommandLineParser parser = new DefaultParser();
+        HelpFormatter formatter = new HelpFormatter();
+        CommandLine cmd = null;
+
+        try {
+            cmd = parser.parse(options, args);
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            formatter.printHelp("picSort", options);
+            System.exit(1);
+        }
+
+        if (cmd.hasOption("verbose")) verbose = true;
+    }
 
 
     private static Map<String,String> parseModelMap(){
@@ -127,7 +150,7 @@ public class controller {
 
         //If not enough exifdata skip the file
         if (date==null|| extension==null    ||   CAMERA_MODEL_REQUIRED && model == null){
-            if (VERBOSE) out.println(tabs+"Skipping:"+ file.getName() + "   date: "+date+"   model:"+model);
+            if (verbose) out.println(tabs+"Skipping:"+ file.getName() + "   date: "+date+"   model:"+model);
             return;
         }
         //rewrite camera model from dictionary if possible.
