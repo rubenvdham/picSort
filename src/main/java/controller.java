@@ -201,10 +201,10 @@ public class controller {
                     break;
             }
         }catch (ImageProcessingException | IOException e2) {
-            System.err.printf("Not parsable: %s\n",file.getAbsolutePath());
+            if (verbose) System.err.printf("Not parsable: %s\n",file.getAbsolutePath());
             return null;
         }catch (Exception e){
-            System.err.printf("ERROR parsing: %s\n",file.getAbsolutePath());
+            if (verbose) System.err.printf("ERROR parsing: %s\n",file.getAbsolutePath());
             e.printStackTrace();
             return null;
         }
