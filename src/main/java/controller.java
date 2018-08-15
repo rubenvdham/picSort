@@ -1,5 +1,4 @@
 import com.drew.imaging.ImageProcessingException;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,6 +26,7 @@ public class controller {
     private static PrintStream out = System.out;
     private static String tabs = "";
     private static Map<String,String> modelMap;
+    private static boolean running = true;
 
     static {
         workingDir = new File("");
@@ -59,7 +59,6 @@ public class controller {
                 modelMap = null;
             }
         }
-
         out.println("Processing directories:");
         processDirectory(inputDir);
         out.println("\n\nDONE");
@@ -103,10 +102,12 @@ public class controller {
         out.println(tabs+dir.getName());
         tabs+="\t";
         for(File child: children){
-            if (child.isDirectory()){
-                processDirectory(child);
-            }else{
-                processFile(child);
+            if (running) {
+                if (child.isDirectory()) {
+                    processDirectory(child);
+                } else {
+                    processFile(child);
+                }
             }
         }
         //all children have been processed, so one tab less and if no children exist, remove the dir.
