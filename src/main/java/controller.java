@@ -221,7 +221,7 @@ public class controller {
             }else{
                 int number = 2;
                 while (dest.exists()){
-                    dest = new File(fileName.replace(" ","_"+number+" "));
+                    dest = new File(fileName.replaceFirst(" ","_"+number+" "));
                     number+=1;
                 }
             }
