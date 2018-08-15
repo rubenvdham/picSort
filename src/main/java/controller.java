@@ -79,7 +79,7 @@ public class controller {
 
         try {
             cmd = parser.parse(options, args);
-        } catch (ParseException e) {
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             formatter.printHelp("picSort", options);
             System.exit(1);
@@ -222,6 +222,7 @@ public class controller {
                 int number = 2;
                 while (dest.exists()){
                     dest = new File(fileName.replace(" ","_"+number+" "));
+                    number+=1;
                 }
             }
         }
