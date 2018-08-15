@@ -12,18 +12,18 @@ import java.util.regex.Pattern;
 
 public class controller {
 
-    ;
     private static final String INPUT_FOLDER = "input";
     private static final String MODEL_DICT_NAME = "camera-dictionary.txt";
-
+    private static final boolean KEEP_SIMILAR_IMAGES = true;
     private static final boolean CAMERA_MODEL_REQUIRED = true;
     private static final boolean MP4_FILE_DATE_FALLBACK = false;
     private static final boolean MOV_FILE_DATE_FALLBACK = true;
-
+    private static final boolean VERBOSE = true;
 
     private static final File workingDir;
     private static final File inputDir;
     private static final File modelDict;
+
     private static PrintStream out = System.out;
     private static String tabs = "";
     private static Map<String,String> modelMap;
@@ -35,14 +35,8 @@ public class controller {
     }
 
 
-
-
-    private static final boolean verbose = true;
     private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMdd-HHmmss");
     private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM");
-
-
-
 
 
 
@@ -55,10 +49,8 @@ public class controller {
             System.exit(1);
         }
 
-
         out.print("Camera Model dictionary: ");
         modelMap = parseModelMap();
-
 
         if (modelMap != null){
             out.println("LOADED");
@@ -67,7 +59,6 @@ public class controller {
                 modelMap = null;
             }
         }
-
 
         out.println("Processing directories:");
         processDirectory(inputDir);
@@ -124,72 +115,93 @@ public class controller {
     }
 
     private static void processFile(File file){
-        String model = null;
-        LocalDateTime date = null;
         String extension = getExtension(file.getName());
-        try {
-            switch (extension){
-                case ".mp4":
-                    date = EXIF.getMp4VideoDate(file,MP4_FILE_DATE_FALLBACK);
-                    model = "";
-                    break;
-                case ".mov":
-                    date = EXIF.getMovVideoDate(file,MOV_FILE_DATE_FALLBACK);
-                    model = EXIF.getMovVideoModel(file);
-                    break;
-                default:
-                    date = EXIF.getImageDate(file);
-                    model = EXIF.getImageModel(file);
-                    break;
-            }
-        }catch (ImageProcessingException | IOException e2) {
-            System.err.printf("Not parsable: %s\n",file.getAbsolutePath());
-            return;
-        }catch
-        (Exception e){
-            System.err.printf("ERROR parsing: %s\n",file.getAbsolutePath());
-            e.printStackTrace();
-            return;
-        }
 
+        Object[] data = getApplicableExifData(file,extension);
+        //on error parsing exifdata return.
+        if (data == null) return;
+
+        LocalDateTime date = (LocalDateTime) data[0];
+        String model = (String) data[1];
+
+        //If not enough exifdata skip the file
         if (date==null|| extension==null    ||   CAMERA_MODEL_REQUIRED && model == null){
-            if (verbose) out.println(tabs+"Skipping:"+ file.getName() + "   date: "+date+"   model:"+model);
+            if (VERBOSE) out.println(tabs+"Skipping:"+ file.getName() + "   date: "+date+"   model:"+model);
             return;
         }
-
+        //rewrite camera model from dictionary if possible.
         model = rewriteModelName(model);
 
-
-
+        //build new filename with the available exif data
         StringBuilder newFileName = new StringBuilder();
         //path
         newFileName.append(workingDir.getAbsolutePath());
         newFileName.append("/"+date.format(DIR_NAME_FORMATTER)+"/");
 
+        //create the yyyy-MM dir if needed
         File dir = new File(newFileName.toString());
         if (!dir.exists()){
             dir.mkdir();
         }
 
-        //filename
+        //append the filename
         newFileName.append(date.format(FILE_NAME_FORMATTER));
         newFileName.append(" ");
         newFileName.append(model);
         newFileName.append(extension);
 
+        //handle multiple shots within one minute
+        File dest = handleFileName(newFileName.toString());
 
-        File dest = new File(newFileName.toString());
+        //only move if destination file is available/allowed
+        if (dest != null) {
+            file.renameTo(dest);
+        }
+    }
 
-        //TODO:Make duplicates folder or append something to alter filename?
-        if (dest.exists()){
-            System.err.println("ERROR: FILE ALREADY EXISTS:"+newFileName.toString());
-            return;
+    private static Object[] getApplicableExifData(File file, String extension) {
+        Object[] result = new Object[2];
+        try {
+            switch (extension){
+                case ".mp4":
+                    result[0] = EXIF.getMp4VideoDate(file,MP4_FILE_DATE_FALLBACK);
+                    result[1] = "";
+                    break;
+                case ".mov":
+                    result[0] = EXIF.getMovVideoDate(file,MOV_FILE_DATE_FALLBACK);
+                    result[1] = EXIF.getMovVideoModel(file);
+                    break;
+                default:
+                    result[0] = EXIF.getImageDate(file);
+                    result[1] = EXIF.getImageModel(file);
+                    break;
+            }
+        }catch (ImageProcessingException | IOException e2) {
+            System.err.printf("Not parsable: %s\n",file.getAbsolutePath());
+            return null;
+        }catch (Exception e){
+            System.err.printf("ERROR parsing: %s\n",file.getAbsolutePath());
+            e.printStackTrace();
+            return null;
         }
 
-        //out.print(tabs+file.getName() +"->>"+ dest.getAbsolutePath()+"     ");
+        return result;
+    }
 
-
-        boolean result = file.renameTo(dest);
+    private static File handleFileName(String fileName) {
+        File dest = new File(fileName);
+        if (dest.exists()){
+            if (!KEEP_SIMILAR_IMAGES){
+                System.err.println("ERROR: FILE ALREADY EXISTS:"+fileName);
+                return null;
+            }else{
+                int number = 2;
+                while (dest.exists()){
+                    dest = new File(fileName.replace(" ","_"+number+" "));
+                }
+            }
+        }
+        return dest;
     }
 
     private static String rewriteModelName(String model) {
