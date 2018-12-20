@@ -3,6 +3,7 @@ input/
 .idea/
 *.iml
 out/
+*.txt
 target/
 
 # Compiled class file

@@ -13,14 +13,16 @@ import java.util.regex.Pattern;
 
 public class controller {
 
-    private static final String INPUT_FOLDER = "input";
-    private static final String MODEL_DICT_NAME = "camera-dictionary.txt";
-    private static final boolean KEEP_SIMILAR_IMAGES = true;
-    private static final boolean CAMERA_MODEL_REQUIRED = true;
-    private static final boolean MP4_FILE_DATE_FALLBACK = false;
-    private static final boolean MOV_FILE_DATE_FALLBACK = true;
-    private static boolean verbose = false;
+    /*Command line args*/
+    private static String INPUT_FOLDER = "input";             //Input folder of the new media
+    private static String MODEL_DICT_NAME = "camera-dictionary.txt";  //File path of the txt file containg the camera model dictionary
+    private static boolean KEEP_SIMILAR_IMAGES = true;        //Similar images are images which have been taken within the same second
+    private static boolean CAMERA_MODEL_REQUIRED = true;      //If yes, EXIF data MUST contain Camera model
+    private static boolean MP4_FILE_DATE_FALLBACK = false;    //Use File creation date for MP4 files
+    private static boolean MOV_FILE_DATE_FALLBACK = true;     //Use File creation date for MOV files
+    private static boolean verbose = false;                         //set verbosity
 
+    /* Runtime variables*/
     private static final File workingDir;
     private static final File inputDir;
     private static final File modelDict;
@@ -47,8 +49,7 @@ public class controller {
         parseArgs(args);
 
         if (!inputDir.exists() || inputDir.isFile()){
-            System.err.println("ERROR: Directory '"+INPUT_FOLDER+"' not found");
-            System.err.println(inputDir.getAbsolutePath());
+            System.err.printf("ERROR: Directory '"+INPUT_FOLDER+"' not found: %s\n",inputDir.getAbsolutePath());
             System.exit(1);
         }
 
@@ -56,10 +57,12 @@ public class controller {
         modelMap = parseModelMap();
 
         if (modelMap != null){
-            out.println("LOADED");
-            printModelMap();
             if (modelMap.size() == 0){
                 modelMap = null;
+                out.println("empty");
+            } else {
+                out.println("LOADED");
+                printModelMap();
             }
         }
         out.println("Processing directories:");
@@ -69,9 +72,21 @@ public class controller {
 
     private static void parseArgs(String[] args) {
         Options options = new Options();
-        Option verbosity = new Option("v","verbose",false,"Toggle verbosity; Default: Off");
-        verbosity.setRequired(false);
-        options.addOption(verbosity);
+        Option verbosity = new Option("v","verbose",false,"Toggle verbosity");
+        Option removeSimilar = new Option("rs","remove-similar",false,"Toggle skip of similar images");
+        Option doNotRequireModel = new Option("rm","relax-model",false,"Skip the camera model check");
+        Option MP4FileDateFallback = new Option("mp4fb","mp4-file-date-fallback",false,"ALLOW mp4 extension fallback on filedate");
+        Option MOVFileDateFallback = new Option("notmovfb","disable-mov-file-date-fallback",false,"DENY mov extension fallback on filedate");
+        Option inputFolder = new Option("i","input",true,"Input folder of the new media, Default: input");
+        Option dictFolder = new Option("d","dictionary",true,"File path of camera model dictionary, Default: camera-dictionary.txt");
+
+        options.addOption(verbosity)
+                .addOption(removeSimilar)
+                .addOption(dictFolder)
+                .addOption(doNotRequireModel)
+                .addOption(MP4FileDateFallback)
+                .addOption(MOVFileDateFallback)
+                .addOption(inputFolder);
 
         CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
@@ -80,12 +95,19 @@ public class controller {
         try {
             cmd = parser.parse(options, args);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            out.println(e.getMessage());
             formatter.printHelp("picSort", options);
             System.exit(1);
         }
 
         if (cmd.hasOption("verbose")) verbose = true;
+        if (cmd.hasOption("input")) INPUT_FOLDER = cmd.getOptionValue("input");
+        if (cmd.hasOption("dictionary")) MODEL_DICT_NAME = cmd.getOptionValue("dictionary");
+        if (cmd.hasOption("mp4-file-date-fallback")) MP4_FILE_DATE_FALLBACK = true;
+        if (cmd.hasOption("disable-mov-file-date-fallback")) MOV_FILE_DATE_FALLBACK = false;
+        if (cmd.hasOption("relax-model")) CAMERA_MODEL_REQUIRED = false;
+        if (cmd.hasOption("remove-similar")) KEEP_SIMILAR_IMAGES = false;
+
     }
 
 
@@ -109,7 +131,6 @@ public class controller {
             System.err.println("WARNING: Couldn't parse dictionary completely");
             //e.printStackTrace();
         }
-
         return result;
     }
 
@@ -133,7 +154,7 @@ public class controller {
                 }
             }
         }
-        //all children have been processed, so one tab less and if no children exist, remove the dir.
+        //all children have been processed, so one tab less and if no children exist, remove the dir
         tabs = tabs.substring(0,tabs.length()-1);
         if (dir.listFiles().length == 0) dir.deleteOnExit();
     }
@@ -149,12 +170,12 @@ public class controller {
         String model = (String) data[1];
 
         //If not enough exifdata skip the file
-        if (date==null|| extension==null    ||   CAMERA_MODEL_REQUIRED && model == null){
+        if (date == null || extension == null ||  (CAMERA_MODEL_REQUIRED && model == null) ){
             if (verbose) out.println(tabs+"Skipping:"+ file.getName() + "   date: "+date+"   model:"+model);
             return;
         }
         //rewrite camera model from dictionary if possible.
-        model = rewriteModelName(model);
+        model = rewriteModelName(model,extension);
 
         //build new filename with the available exif data
         StringBuilder newFileName = new StringBuilder();
@@ -170,8 +191,10 @@ public class controller {
 
         //append the filename
         newFileName.append(date.format(FILE_NAME_FORMATTER));
-        newFileName.append(" ");
-        newFileName.append(model);
+        if (!model.equals("")){
+            newFileName.append(" ");
+            newFileName.append(model);
+        }
         newFileName.append(extension);
 
         //handle multiple shots within one minute
@@ -189,7 +212,7 @@ public class controller {
             switch (extension){
                 case ".mp4":
                     result[0] = EXIF.getMp4VideoDate(file,MP4_FILE_DATE_FALLBACK);
-                    result[1] = "";
+                    result[1] = null;
                     break;
                 case ".mov":
                     result[0] = EXIF.getMovVideoDate(file,MOV_FILE_DATE_FALLBACK);
@@ -208,7 +231,6 @@ public class controller {
             e.printStackTrace();
             return null;
         }
-
         return result;
     }
 
@@ -216,7 +238,7 @@ public class controller {
         File dest = new File(fileName);
         if (dest.exists()){
             if (!KEEP_SIMILAR_IMAGES){
-                System.err.println("ERROR: FILE ALREADY EXISTS:"+fileName);
+                out.println("Similar image, skipping (can be turned off): "+fileName);
                 return null;
             }else{
                 int number = 2;
@@ -229,11 +251,15 @@ public class controller {
         return dest;
     }
 
-    private static String rewriteModelName(String model) {
+    private static String rewriteModelName(String model, String extension) {
         if (model == null) {
-            return "Unknown";
+            if (extension.startsWith(".jp")) {
+                return "Unknown";
+            }else{
+                return "";
+            }
         }
-        if (modelMap !=null && modelMap.containsKey(model)) {
+        if (modelMap != null && modelMap.containsKey(model)) {
             return modelMap.get(model);
         } else {
             return model;
@@ -254,9 +280,5 @@ public class controller {
             System.err.println("ERROR: Couldn't get file extension of: "+filename);
             return null;
         }
-
     }
-
 }
-
-
