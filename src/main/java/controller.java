@@ -41,8 +41,8 @@ public class controller {
     }
 
 
-    private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYYMMdd-HHmmss");
-    private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM");
+    private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
 
 
@@ -181,6 +181,8 @@ public class controller {
         }
         //rewrite camera model from dictionary if possible.
         model = rewriteModelName(model,extension);
+
+        if (verbose) out.println(tabs+ file.getName() + "  -->  /" + date.format(DIR_NAME_FORMATTER)+"/"+date.format(FILE_NAME_FORMATTER)+" "+ rewriteModelName(model,extension)+extension);
 
         //build new filename with the available exif data
         StringBuilder newFileName = new StringBuilder();
