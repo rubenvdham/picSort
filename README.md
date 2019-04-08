@@ -38,26 +38,25 @@ output:
 
 ## Command line options
 
-**--input** : *Input folder of the media, Default: 'input'*
-
-**--dictionary** : *File path of the text file containing the Camera Model dictionary, Default: 'camera-dictionary.txt'*
-
-**--remove-similar** : *Toggle skip behavior of similar images (multiple images per second)*
-
-**--relax-model** : *Skip the Camera Model Check, allowing media without a specified Camera Model in the EXIF data*
-
-**--mp4-file-date-fallback** : *ALLOW media with .mp4 extension to fallback on file date when EXIF creation date is not available*
-
+**--input** : *Input folder of the media, Default: 'input'*  
+**--output** : *Output folder of the sorted media, Default: workingdir"*  
+**--remove-duplicates** : *Apply file content Hash collision checking if EXIF data is the same in input and output dir*  
+**--dictionary** : *File path of the text file containing the Camera Model dictionary, Default: 'camera-dictionary.txt'*  
+**--remove-similar** : *Toggle skip behavior of similar images (multiple images per second)*  
+**--relax-model** : *Skip the Camera Model Check, allowing media without a specified Camera Model in the EXIF data*  
+**--mp4-file-date-fallback** : *ALLOW media with .mp4 extension to fallback on file date when EXIF creation date is not available*  
 **--disable-mov-file-date-fallback** : *DENY media with .mov extension to fallback on file date when EXIF creation date is not available*
 
-The output folder is the current working directory of the script.
 
 ### Features
 
 #### Camera Dictionary
 Used to map camera types to specified names. It should be a text file. Besides that, it should adhere to the following structure:  
 `EXIF model:requested file name model`  
- e.g `ONEPLUS A5000:Oneplus 5` or `NIKON 43939394ABC:camera Alice`
+ e.g   
+ `ONEPLUS A5000:Oneplus 5`  
+or  
+`NIKON 43939394ABC:camera Alice`
 
  #### Sloppy source code
  It's not a bug! It's a feature!

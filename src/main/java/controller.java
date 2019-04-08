@@ -17,7 +17,8 @@ public class controller {
     private static String DEFAULT_INPUT_FOLDER = "input";             //Input folder of the new media
     private static String DEFAULT_OUTPUT_FOLDER = "./";             //Output folder of the sorted media
     private static String DEFAULT_MODEL_DICT_NAME = "camera-dictionary.txt";  //File path of the txt file containg the camera model dictionary
-    private static boolean KEEP_SIMILAR_IMAGES = true;        //Similar images are images which have been taken within the same second
+    private static boolean KEEP_SOMEWHAT_SIMILAR_IMAGES = true;        //Similar images are images which have been taken within the same second
+    private static boolean REMOVE_DUPLICATES = false;           //Apply HASH file content checking for duplicate images
     private static boolean CAMERA_MODEL_REQUIRED = true;      //If yes, EXIF data MUST contain Camera model
     private static boolean MP4_FILE_DATE_FALLBACK = false;    //Use File creation date for MP4 files
     private static boolean MOV_FILE_DATE_FALLBACK = true;     //Use File creation date for MOV files
@@ -40,11 +41,8 @@ public class controller {
         modelDict = new File(DEFAULT_MODEL_DICT_NAME);
     }
 
-
     private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
-
-
 
 
     public static void main(String args[]){
@@ -82,6 +80,7 @@ public class controller {
         Option inputFolder = new Option("i","input",true,"Input folder of the new media, Default: input");
         Option outputFolder = new Option("o","output",true,"output folder of the sorted media, Default: workingdir");
         Option dictFolder = new Option("d","dictionary",true,"File path of camera model dictionary, Default: camera-dictionary.txt");
+        Option removeDuplicates = new Option("rd","remove-duplicates",false,"Apply HASH file content checking for duplicate images");
 
         options.addOption(verbosity)
                 .addOption(removeSimilar)
@@ -90,7 +89,8 @@ public class controller {
                 .addOption(MP4FileDateFallback)
                 .addOption(MOVFileDateFallback)
                 .addOption(inputFolder)
-                .addOption(outputFolder);
+                .addOption(outputFolder)
+                .addOption(removeDuplicates);
 
         CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
@@ -111,7 +111,8 @@ public class controller {
         if (cmd.hasOption("mp4-file-date-fallback")) MP4_FILE_DATE_FALLBACK = true;
         if (cmd.hasOption("disable-mov-file-date-fallback")) MOV_FILE_DATE_FALLBACK = false;
         if (cmd.hasOption("relax-model")) CAMERA_MODEL_REQUIRED = false;
-        if (cmd.hasOption("remove-similar")) KEEP_SIMILAR_IMAGES = false;
+        if (cmd.hasOption("remove-similar")) KEEP_SOMEWHAT_SIMILAR_IMAGES = false;
+        if (cmd.hasOption("remove-duplicates")) REMOVE_DUPLICATES = true;
 
     }
 
@@ -166,7 +167,6 @@ public class controller {
 
     private static void processFile(File file){
         String extension = getExtension(file.getName());
-
         Object[] data = getApplicableExifData(file,extension);
         //on error parsing exifdata return.
         if (data == null) return;
@@ -174,15 +174,13 @@ public class controller {
         LocalDateTime date = (LocalDateTime) data[0];
         String model = (String) data[1];
 
-        //If not enough exifdata skip the file
+        //If not enough exif data skip the file
         if (date == null || extension == null ||  (CAMERA_MODEL_REQUIRED && model == null) ){
             if (verbose) out.println(tabs+"Skipping:"+ file.getName() + "   date: "+date+"   model:"+model);
             return;
         }
         //rewrite camera model from dictionary if possible.
         model = rewriteModelName(model,extension);
-
-        if (verbose) out.println(tabs+ file.getName() + "  -->  /" + date.format(DIR_NAME_FORMATTER)+"/"+date.format(FILE_NAME_FORMATTER)+" "+ rewriteModelName(model,extension)+extension);
 
         //build new filename with the available exif data
         StringBuilder newFileName = new StringBuilder();
@@ -205,7 +203,10 @@ public class controller {
         newFileName.append(extension);
 
         //handle multiple shots within one minute
-        File dest = handleFileName(newFileName.toString());
+        File dest = handleFileName(file, newFileName.toString());
+        if (dest == null) return; //duplicate file
+
+        if (verbose) out.println(tabs+ file.getName() + "  -->  " + date.format(DIR_NAME_FORMATTER)+"/"+ dest.getName());
 
         //only move if destination file is available/allowed
         if (dest != null) {
@@ -241,16 +242,20 @@ public class controller {
         return result;
     }
 
-    private static File handleFileName(String fileName) {
-        File dest = new File(fileName);
+    private static File handleFileName(File originalFile, String fileNameWanted) {
+        File dest = new File(fileNameWanted);
         if (dest.exists()){
-            if (!KEEP_SIMILAR_IMAGES){
-                out.println("Similar image, skipping (can be turned off): "+fileName);
+            if (REMOVE_DUPLICATES && Hash.sameFiles(originalFile, new File(fileNameWanted))){
+                if (verbose) out.println(tabs+"Duplicate:"+ dest.getName());
+                return null;
+            }
+            if (!KEEP_SOMEWHAT_SIMILAR_IMAGES){
+                out.println("Similar image, skipping (can be turned off): "+fileNameWanted);
                 return null;
             }else{
                 int number = 2;
                 while (dest.exists()){
-                    dest = new File(fileName.replaceFirst(" ","_"+number+" "));
+                    dest = new File(fileNameWanted.replaceFirst("\\.","_"+number+"."));
                     number+=1;
                 }
             }
@@ -260,7 +265,7 @@ public class controller {
 
     private static String rewriteModelName(String model, String extension) {
         if (model == null) {
-            if (extension.startsWith(".jp")) {
+            if (extension.startsWith(".jpg")) {
                 return "Unknown";
             }else{
                 return "";
