@@ -14,8 +14,9 @@ import java.util.regex.Pattern;
 public class controller {
 
     /*Command line args*/
-    private static String INPUT_FOLDER = "input";             //Input folder of the new media
-    private static String MODEL_DICT_NAME = "camera-dictionary.txt";  //File path of the txt file containg the camera model dictionary
+    private static String DEFAULT_INPUT_FOLDER = "input";             //Input folder of the new media
+    private static String DEFAULT_OUTPUT_FOLDER = "./";             //Output folder of the sorted media
+    private static String DEFAULT_MODEL_DICT_NAME = "camera-dictionary.txt";  //File path of the txt file containg the camera model dictionary
     private static boolean KEEP_SIMILAR_IMAGES = true;        //Similar images are images which have been taken within the same second
     private static boolean CAMERA_MODEL_REQUIRED = true;      //If yes, EXIF data MUST contain Camera model
     private static boolean MP4_FILE_DATE_FALLBACK = false;    //Use File creation date for MP4 files
@@ -23,19 +24,20 @@ public class controller {
     private static boolean verbose = false;                         //set verbosity
 
     /* Runtime variables*/
-    private static final File workingDir;
-    private static final File inputDir;
-    private static final File modelDict;
+    private static File inputDir;
+    private static File outputDir;
+    private static File modelDict;
 
     private static PrintStream out = System.out;
+    private static PrintStream err = System.err;
     private static String tabs = "";
     private static Map<String,String> modelMap;
     private static boolean running = true;
 
     static {
-        workingDir = new File("");
-        inputDir = new File(workingDir.getAbsolutePath()+"/"+INPUT_FOLDER);
-        modelDict = new File(workingDir.getAbsolutePath()+"/"+MODEL_DICT_NAME);
+        inputDir = new File(DEFAULT_INPUT_FOLDER);
+        outputDir = new File(DEFAULT_OUTPUT_FOLDER);
+        modelDict = new File(DEFAULT_MODEL_DICT_NAME);
     }
 
 
@@ -49,7 +51,7 @@ public class controller {
         parseArgs(args);
 
         if (!inputDir.exists() || inputDir.isFile()){
-            System.err.printf("ERROR: Directory '"+INPUT_FOLDER+"' not found: %s\n",inputDir.getAbsolutePath());
+            err.printf("ERROR: Input Directory not found: %s\n",inputDir.getAbsolutePath());
             System.exit(1);
         }
 
@@ -78,6 +80,7 @@ public class controller {
         Option MP4FileDateFallback = new Option("mp4fb","mp4-file-date-fallback",false,"ALLOW mp4 extension fallback on filedate");
         Option MOVFileDateFallback = new Option("notmovfb","disable-mov-file-date-fallback",false,"DENY mov extension fallback on filedate");
         Option inputFolder = new Option("i","input",true,"Input folder of the new media, Default: input");
+        Option outputFolder = new Option("o","output",true,"output folder of the sorted media, Default: workingdir");
         Option dictFolder = new Option("d","dictionary",true,"File path of camera model dictionary, Default: camera-dictionary.txt");
 
         options.addOption(verbosity)
@@ -86,7 +89,8 @@ public class controller {
                 .addOption(doNotRequireModel)
                 .addOption(MP4FileDateFallback)
                 .addOption(MOVFileDateFallback)
-                .addOption(inputFolder);
+                .addOption(inputFolder)
+                .addOption(outputFolder);
 
         CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
@@ -101,8 +105,9 @@ public class controller {
         }
 
         if (cmd.hasOption("verbose")) verbose = true;
-        if (cmd.hasOption("input")) INPUT_FOLDER = cmd.getOptionValue("input");
-        if (cmd.hasOption("dictionary")) MODEL_DICT_NAME = cmd.getOptionValue("dictionary");
+        if (cmd.hasOption("input")) inputDir = new File(cmd.getOptionValue("input"));
+        if (cmd.hasOption("output")) outputDir = new File(cmd.getOptionValue("output"));
+        if (cmd.hasOption("dictionary")) modelDict = new File(cmd.getOptionValue("dictionary"));
         if (cmd.hasOption("mp4-file-date-fallback")) MP4_FILE_DATE_FALLBACK = true;
         if (cmd.hasOption("disable-mov-file-date-fallback")) MOV_FILE_DATE_FALLBACK = false;
         if (cmd.hasOption("relax-model")) CAMERA_MODEL_REQUIRED = false;
@@ -180,7 +185,7 @@ public class controller {
         //build new filename with the available exif data
         StringBuilder newFileName = new StringBuilder();
         //path
-        newFileName.append(workingDir.getAbsolutePath());
+        newFileName.append(outputDir.getAbsolutePath());
         newFileName.append("/"+date.format(DIR_NAME_FORMATTER)+"/");
 
         //create the yyyy-MM dir if needed
