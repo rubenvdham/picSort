@@ -20,6 +20,8 @@ import java.util.Date;
 
 public class EXIF {
 
+    private static ZoneId TIME_ZONE = ZoneId.of("UTC");
+
      /*IMAGE PROTECTED CLASSES*/
 
     protected static String getImageModel(File file)throws IOException,ImageProcessingException{
@@ -54,7 +56,7 @@ public class EXIF {
         if (creationDate == null) return null;
 
 
-        LocalDateTime creationDateTime = LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
+        LocalDateTime creationDateTime = LocalDateTime.ofInstant(creationDate.toInstant(), TIME_ZONE);
         return creationDateTime;
     }
 
@@ -97,7 +99,7 @@ public class EXIF {
         if (creationDate == null && modifiedFallback) try{ creationDate = fsDir.getDate(3);}catch(NullPointerException e){} //try filesystem modified date
         if (creationDate == null) return null;
 
-        return LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
+        return LocalDateTime.ofInstant(creationDate.toInstant(), TIME_ZONE);
     }
 
     protected static String getMovVideoModel(File file) throws IOException,ImageProcessingException{
@@ -122,7 +124,7 @@ public class EXIF {
         if (creationDate == null && modifiedFallback) creationDate = fsDir.getDate(3); //try filesystem modified date
         if (creationDate == null) return null;
 
-        return LocalDateTime.ofInstant(creationDate.toInstant(),ZoneId.systemDefault());
+        return LocalDateTime.ofInstant(creationDate.toInstant(), TIME_ZONE);
     }
 
 

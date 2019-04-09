@@ -40,7 +40,7 @@ output:
 
 **--input** : *Input folder of the media, Default: 'input'*  
 **--output** : *Output folder of the sorted media, Default: workingdir"*  
-**--remove-duplicates** : *Apply file content Hash collision checking if EXIF data is the same in input and output dir*  
+**--keep-duplicates** : *Disable file content Hash collision checking if EXIF data is the same in input and output dir*  
 **--dictionary** : *File path of the text file containing the Camera Model dictionary, Default: 'camera-dictionary.txt'*  
 **--remove-similar** : *Toggle skip behavior of similar images (multiple images per second)*  
 **--relax-model** : *Skip the Camera Model Check, allowing media without a specified Camera Model in the EXIF data*  

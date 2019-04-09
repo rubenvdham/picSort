@@ -18,7 +18,7 @@ public class controller {
     private static String DEFAULT_OUTPUT_FOLDER = "./";             //Output folder of the sorted media
     private static String DEFAULT_MODEL_DICT_NAME = "camera-dictionary.txt";  //File path of the txt file containg the camera model dictionary
     private static boolean KEEP_SOMEWHAT_SIMILAR_IMAGES = true;        //Similar images are images which have been taken within the same second
-    private static boolean REMOVE_DUPLICATES = false;           //Apply HASH file content checking for duplicate images
+    private static boolean REMOVE_DUPLICATES = true;           //Apply HASH file content checking for duplicate images
     private static boolean CAMERA_MODEL_REQUIRED = true;      //If yes, EXIF data MUST contain Camera model
     private static boolean MP4_FILE_DATE_FALLBACK = false;    //Use File creation date for MP4 files
     private static boolean MOV_FILE_DATE_FALLBACK = true;     //Use File creation date for MOV files
@@ -73,14 +73,14 @@ public class controller {
     private static void parseArgs(String[] args) {
         Options options = new Options();
         Option verbosity = new Option("v","verbose",false,"Toggle verbosity");
-        Option removeSimilar = new Option("rs","remove-similar",false,"Toggle skip of similar images");
+        Option removeSimilar = new Option("rs","remove-similar",false,"Toggle skip of similar media");
         Option doNotRequireModel = new Option("rm","relax-model",false,"Skip the camera model check");
         Option MP4FileDateFallback = new Option("mp4fb","mp4-file-date-fallback",false,"ALLOW mp4 extension fallback on filedate");
         Option MOVFileDateFallback = new Option("notmovfb","disable-mov-file-date-fallback",false,"DENY mov extension fallback on filedate");
-        Option inputFolder = new Option("i","input",true,"Input folder of the new media, Default: input");
+        Option inputFolder = new Option("i","input",true,"Inp1ut folder of the new media, Default: input");
         Option outputFolder = new Option("o","output",true,"output folder of the sorted media, Default: workingdir");
         Option dictFolder = new Option("d","dictionary",true,"File path of camera model dictionary, Default: camera-dictionary.txt");
-        Option removeDuplicates = new Option("rd","remove-duplicates",false,"Apply HASH file content checking for duplicate images");
+        Option removeDuplicates = new Option("kd","keep-duplicates",false,"Disable HASH file content checking for duplicate media");
 
         options.addOption(verbosity)
                 .addOption(removeSimilar)
@@ -185,11 +185,10 @@ public class controller {
         //build new filename with the available exif data
         StringBuilder newFileName = new StringBuilder();
         //path
-        newFileName.append(outputDir.getAbsolutePath());
         newFileName.append("/"+date.format(DIR_NAME_FORMATTER)+"/");
 
         //create the yyyy-MM dir if needed
-        File dir = new File(newFileName.toString());
+        File dir = new File(outputDir.getAbsolutePath() + newFileName.toString());
         if (!dir.exists()){
             dir.mkdir();
         }
@@ -206,11 +205,12 @@ public class controller {
         File dest = handleFileName(file, newFileName.toString());
         if (dest == null) return; //duplicate file
 
-        if (verbose) out.println(tabs+ file.getName() + "  -->  " + date.format(DIR_NAME_FORMATTER)+"/"+ dest.getName());
+        if (verbose) out.printf(tabs+ file.getName() + "  -->  " + date.format(DIR_NAME_FORMATTER)+"/"+ dest.getName());
 
         //only move if destination file is available/allowed
         if (dest != null) {
-            file.renameTo(dest);
+            boolean result = file.renameTo(dest);
+            //if (verbose) out.println("\t"+result);
         }
     }
 
@@ -243,9 +243,9 @@ public class controller {
     }
 
     private static File handleFileName(File originalFile, String fileNameWanted) {
-        File dest = new File(fileNameWanted);
+        File dest = new File(outputDir.getAbsolutePath() + fileNameWanted);
         if (dest.exists()){
-            if (REMOVE_DUPLICATES && Hash.sameFiles(originalFile, new File(fileNameWanted))){
+            if (REMOVE_DUPLICATES && Hash.sameFiles(originalFile, dest)){
                 if (verbose) out.println(tabs+"Duplicate:"+ dest.getName());
                 return null;
             }
@@ -255,7 +255,7 @@ public class controller {
             }else{
                 int number = 2;
                 while (dest.exists()){
-                    dest = new File(fileNameWanted.replaceFirst("\\.","_"+number+"."));
+                    dest = new File(outputDir.getAbsolutePath() + fileNameWanted.replaceFirst("\\s","_"+number+" "));
                     number+=1;
                 }
             }
