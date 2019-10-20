@@ -1,3 +1,9 @@
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.imaging.ImageProcessingException;
 import com.drew.imaging.mp4.Mp4MetadataReader;
@@ -12,12 +18,6 @@ import com.drew.metadata.mov.media.QuickTimeVideoDirectory;
 import com.drew.metadata.mov.metadata.QuickTimeMetadataDirectory;
 import com.drew.metadata.mp4.Mp4Directory;
 
-
-import java.io.File;
-import java.io.IOException;
-import java.time.*;
-import java.util.Date;
-
 public class EXIF {
 
     private static ZoneId TIME_ZONE = ZoneId.of("UTC");
@@ -29,22 +29,19 @@ public class EXIF {
         return getImageModel(metadata);
     }
 
-    protected static String getImageModel(Metadata metadata){
+    
 
-        ExifIFD0Directory idf = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
-        try{
-            if (idf.getDescription(272) == null) return null;
-        }catch (NullPointerException e){return null;}
-        return idf.getDescription(272);
-    }
-
-
-    protected static LocalDateTime getImageDate(File file) throws IOException,ImageProcessingException{
+    protected static LocalDateTime getImageDate(File file, boolean modifiedFallback) throws IOException,ImageProcessingException{
         Metadata metadata = ImageMetadataReader.readMetadata(file);
-        return getImageDate(metadata);
+        return getImageDate(metadata, modifiedFallback);
     }
 
-    protected static LocalDateTime getImageDate(Metadata metadata){
+    
+
+
+    /*IMAGE PRIVATE CLASSES*/
+
+    private static LocalDateTime getImageDate(Metadata metadata, boolean modifiedFallback){
         Date creationDate = null;
         try{
             creationDate = getImageCreationDate(metadata);
@@ -53,6 +50,7 @@ public class EXIF {
         }
         if (creationDate == null) { try { creationDate = getImageDigitizedDate(metadata);}catch (NullPointerException e){}}
         if (creationDate == null) { try { creationDate = getImageIFD0ModifyDate(metadata);}catch (NullPointerException e){}}
+        if (creationDate == null && modifiedFallback) { try { creationDate = getImageFileCreationDate(metadata);}catch(NullPointerException e){}}
         if (creationDate == null) return null;
 
 
@@ -62,7 +60,16 @@ public class EXIF {
 
 
 
-    /*IMAGE PRIVATE CLASSES*/
+    
+	private static String getImageModel(Metadata metadata){
+
+        ExifIFD0Directory idf = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+        try{
+            if (idf.getDescription(272) == null) return null;
+        }catch (NullPointerException e){return null;}
+        return idf.getDescription(272);
+    }
+
 
     private static Date getImageCreationDate(Metadata metadata) throws NullPointerException{
         ExifSubIFDDirectory sub =  metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
@@ -81,6 +88,11 @@ public class EXIF {
         ExifIFD0Directory ifd=  metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
         return ifd.getDate(306);
     }
+
+    private static Date getImageFileCreationDate(Metadata metadata) {
+        FileSystemDirectory fsDir = metadata.getFirstDirectoryOfType(FileSystemDirectory.class);
+		return fsDir.getDate(3);
+	}
 
 
 
