@@ -239,7 +239,7 @@ public class controller {
             switch (extension) {
             case ".mp4":
                 result[0] = EXIF.getMp4VideoDate(file, MP4_FILE_DATE_FALLBACK);
-                result[1] = null;
+                result[1] = EXIF.getMp4VideoModel(file);
                 break;
             case ".mov":
                 result[0] = EXIF.getMovVideoDate(file, MOV_FILE_DATE_FALLBACK);
