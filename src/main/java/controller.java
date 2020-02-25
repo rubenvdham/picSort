@@ -44,7 +44,7 @@ public class controller {
         modelDict = new File(DEFAULT_MODEL_DICT_NAME);
     }
 
-    private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HH꞉mm꞉ss");
     private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
     public static void main(String args[]) {
@@ -224,7 +224,7 @@ public class controller {
             return; // duplicate file
 
         if (verbose)
-            out.printf(tabs + file.getName() + "  -->  " + date.format(DIR_NAME_FORMATTER) + "/" + dest.getName());
+            out.println(tabs + file.getName() + "  -->  " + date.format(DIR_NAME_FORMATTER) + "/" + dest.getName());
 
         // only move if destination file is available/allowed
         if (dest != null) {
@@ -239,7 +239,7 @@ public class controller {
             switch (extension) {
             case ".mp4":
                 result[0] = EXIF.getMp4VideoDate(file, MP4_FILE_DATE_FALLBACK);
-                result[1] = null;
+                result[1] = EXIF.getMp4VideoModel(file);
                 break;
             case ".mov":
                 result[0] = EXIF.getMovVideoDate(file, MOV_FILE_DATE_FALLBACK);

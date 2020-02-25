@@ -1,5 +1,7 @@
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -139,12 +141,32 @@ public class EXIF {
         return LocalDateTime.ofInstant(creationDate.toInstant(), TIME_ZONE);
     }
 
+    protected static String getMp4VideoModel(File file){
+        try{
+            String[] args = {"exiftool", file.getAbsolutePath()};
+            Process exiftool = Runtime.getRuntime().exec(args); 
+            BufferedReader input = new BufferedReader(new InputStreamReader(exiftool.getInputStream()));
+            String model = "";
+            while(!model.contains("Android Model")){
+                model = input.readLine();
+            }
+            return model.replaceAll("\n", "").substring(model.indexOf(":")+2);
+        
+        }catch(IOException e){
+            e.printStackTrace();
+            System.exit(1);
+        }catch(NullPointerException e){
+            return null;
+        }
+        return null;
+    }
+
 
     /*debug functions*/
 
     protected static void printMetadata(File file){
         try {
-            Metadata metadata = ImageMetadataReader.readMetadata(file);
+            Metadata metadata = Mp4MetadataReader.readMetadata(file);
 
             print(metadata, "Using ImageMetadataReader");
         } catch (ImageProcessingException e) {
