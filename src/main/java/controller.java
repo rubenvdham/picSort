@@ -26,6 +26,7 @@ public class controller {
     private static boolean MP4_FILE_DATE_FALLBACK = false; // Do not use File creation date for MP4 files
     private static boolean MOV_FILE_DATE_FALLBACK = true; // Use File creation date for MOV files
     private static boolean verbose = false; // set verbosity
+    
 
     /* Runtime variables */
     private static File inputDir;
@@ -45,8 +46,10 @@ public class controller {
     }
 
     private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HH꞉mm꞉ss");
-    private static final DateTimeFormatter DIR_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
-
+    private static final DateTimeFormatter DIR_NAME_FORMATTER_MONTH = DateTimeFormatter.ofPattern("yyyy-MM");
+    private static final DateTimeFormatter DIR_NAME_FORMATTER_YEAR = DateTimeFormatter.ofPattern("yyyy");
+    private static DateTimeFormatter DIR_NAME_FORMATTER = DIR_NAME_FORMATTER_MONTH;
+    
     public static void main(String args[]) {
         parseArgs(args);
 
@@ -89,10 +92,13 @@ public class controller {
                 "File path of camera model dictionary, Default: camera-dictionary.txt");
         Option removeDuplicates = new Option("kd", "keep-duplicates", false,
                 "Disable HASH file content checking for duplicate media");
+        Option yearlyDirNames = new Option("yearly", "yearly-directory-fmt", false,
+                 "Switch destination date naming format into \"yyyy\"");
+            
 
         options.addOption(verbosity).addOption(removeSimilar).addOption(dictFolder).addOption(doNotRequireModel)
                 .addOption(ImgFileDateFallback).addOption(MP4FileDateFallback).addOption(MOVFileDateFallback)
-                .addOption(inputFolder).addOption(outputFolder).addOption(removeDuplicates);
+                .addOption(inputFolder).addOption(outputFolder).addOption(removeDuplicates).addOption(yearlyDirNames);
 
         CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
@@ -126,6 +132,8 @@ public class controller {
             KEEP_SOMEWHAT_SIMILAR_IMAGES = false;
         if (cmd.hasOption("remove-duplicates"))
             REMOVE_DUPLICATES = true;
+        if (cmd.hasOption("yearly-directory-fmt"))
+            DIR_NAME_FORMATTER = DIR_NAME_FORMATTER_YEAR;
 
     }
 
