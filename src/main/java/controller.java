@@ -26,7 +26,6 @@ public class controller {
     private static boolean MP4_FILE_DATE_FALLBACK = false; // Do not use File creation date for MP4 files
     private static boolean MOV_FILE_DATE_FALLBACK = true; // Use File creation date for MOV files
     private static boolean verbose = false; // set verbosity
-    
 
     /* Runtime variables */
     private static File inputDir;
@@ -49,7 +48,7 @@ public class controller {
     private static final DateTimeFormatter DIR_NAME_FORMATTER_MONTH = DateTimeFormatter.ofPattern("yyyy-MM");
     private static final DateTimeFormatter DIR_NAME_FORMATTER_YEAR = DateTimeFormatter.ofPattern("yyyy");
     private static DateTimeFormatter DIR_NAME_FORMATTER = DIR_NAME_FORMATTER_MONTH;
-    
+
     public static void main(String args[]) {
         parseArgs(args);
 
@@ -93,8 +92,7 @@ public class controller {
         Option removeDuplicates = new Option("kd", "keep-duplicates", false,
                 "Disable HASH file content checking for duplicate media");
         Option yearlyDirNames = new Option("yearly", "yearly-directory-fmt", false,
-                 "Switch destination date naming format into \"yyyy\"");
-            
+                "Switch destination date naming format into \"yyyy\"");
 
         options.addOption(verbosity).addOption(removeSimilar).addOption(dictFolder).addOption(doNotRequireModel)
                 .addOption(ImgFileDateFallback).addOption(MP4FileDateFallback).addOption(MOVFileDateFallback)
@@ -245,18 +243,18 @@ public class controller {
         Object[] result = new Object[2];
         try {
             switch (extension) {
-            case ".mp4":
-                result[0] = EXIF.getMp4VideoDate(file, MP4_FILE_DATE_FALLBACK);
-                result[1] = EXIF.getMp4VideoModel(file);
-                break;
-            case ".mov":
-                result[0] = EXIF.getMovVideoDate(file, MOV_FILE_DATE_FALLBACK);
-                result[1] = EXIF.getMovVideoModel(file);
-                break;
-            default:
-                result[0] = EXIF.getImageDate(file, IMAGE_FILE_DATE_FALLBACK);
-                result[1] = EXIF.getImageModel(file);
-                break;
+                case ".mp4":
+                    result[0] = EXIF.getMp4VideoDate(file, MP4_FILE_DATE_FALLBACK);
+                    result[1] = EXIF.getMp4VideoModel(file);
+                    break;
+                case ".mov":
+                    result[0] = EXIF.getMovVideoDate(file, MOV_FILE_DATE_FALLBACK);
+                    result[1] = EXIF.getMovVideoModel(file);
+                    break;
+                default:
+                    result[0] = EXIF.getImageDate(file, IMAGE_FILE_DATE_FALLBACK);
+                    result[1] = EXIF.getImageModel(file);
+                    break;
             }
         } catch (ImageProcessingException | IOException e2) {
             if (verbose)
@@ -273,7 +271,8 @@ public class controller {
 
     private static File handleFileName(File originalFile, String fileNameWanted) {
         File dest = new File(outputDir.getAbsolutePath() + fileNameWanted);
-        if (dest.exists()) {
+        int number = 2;
+        while (dest.exists()) {
             if (REMOVE_DUPLICATES && Hash.sameFiles(originalFile, dest)) {
                 if (verbose)
                     out.println(tabs + "Duplicate:" + dest.getName());
@@ -282,14 +281,11 @@ public class controller {
             if (!KEEP_SOMEWHAT_SIMILAR_IMAGES) {
                 out.println("Similar image, skipping (can be turned off): " + fileNameWanted);
                 return null;
-            } else {
-                int number = 2;
-                while (dest.exists()) {
-                    dest = new File(
-                            outputDir.getAbsolutePath() + fileNameWanted.replaceFirst("\\s", "_" + number + " "));
-                    number += 1;
-                }
             }
+
+            dest = new File(outputDir.getAbsolutePath() + fileNameWanted.replaceFirst("\\s", "_" + number + " "));
+            number += 1;
+
         }
         return dest;
     }
